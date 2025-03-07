@@ -1,50 +1,59 @@
+import os
 import time
 import random
 from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
+from dotenv import load_dotenv
 
-def setup_browser():
-    options = webdriver.ChromeOptions()
-    options.add_argument("--user-data-dir=/path/to/your/chrome/profile")  # Change to your Chrome profile path
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--headless")  # Run in headless mode on VPS
-    
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-    return driver
+# Load environment variables
+load_dotenv()
+PRIVATE_KEY = os.getenv("PRIVATE_KEY")
 
-def swap_ambient(driver):
-    driver.get("https://monad.ambient.finance/")
-    time.sleep(random.randint(3, 7))  # Random delay
-    
-    # Locate and perform swap actions (customize this part)
-    # Example: driver.find_element(By.XPATH, "//button[contains(text(), 'Swap')]").click()
-    
-    print("Swap on Ambient completed!")
+if not PRIVATE_KEY:
+    raise ValueError("Private key not found! Store it securely in a .env file.")
 
-def stake_apriori(driver):
-    driver.get("https://stake.apr.io/")
-    time.sleep(random.randint(3, 7))
-    
-    # Locate and perform staking actions
-    print("Staking on Apriori completed!")
+# Setup Chrome with Rabby Wallet extension
+chrome_options = webdriver.ChromeOptions()
+chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+chrome_options.add_argument("--headless")  # Remove this if you want to see the browser
+chrome_options.add_argument("--no-sandbox")
+chrome_options.add_argument("--disable-dev-shm-usage")
+chrome_options.add_argument("--load-extension=/path/to/rabby-wallet")  # Update path
 
-def run_random_tasks():
-    driver = setup_browser()
-    
-    tasks = [swap_ambient, stake_apriori]  # Add more functions as needed
-    random.shuffle(tasks)
-    
-    for _ in range(random.randint(10, 20)):  # Execute 10-20 random tasks daily
-        task = random.choice(tasks)
-        task(driver)
-        time.sleep(random.randint(300, 1800))  # Random delay between actions (5-30 min)
-    
-    driver.quit()
+# Initialize WebDriver
+service = Service(ChromeDriverManager().install())
+driver = webdriver.Chrome(service=service, options=chrome_options)
 
-if __name__ == "__main__":
-    run_random_tasks()
+def swap_tokens(platform_url, steps):
+    """Automates token swaps on a given platform."""
+    driver.get(platform_url)
+    time.sleep(random.randint(5, 10))  # Random delay
+    
+    for step in steps:
+        element = driver.find_element(*step["locator"])
+        action = step.get("action", "click")
+        if action == "click":
+            element.click()
+        elif action == "send_keys":
+            element.send_keys(step["value"])
+        time.sleep(random.randint(3, 6))
+    print(f"Swap completed on {platform_url}")
+
+# Example swap tasks (add actual locators)
+swap_tasks = [
+    {"url": "https://monad.ambient.finance/", "steps": []},
+    {"url": "https://alpha.izumi.finance/trade/swap", "steps": []},
+    {"url": "https://monorail.xyz/", "steps": []},
+]
+
+# Execute 20 random swaps daily
+for _ in range(20):
+    task = random.choice(swap_tasks)
+    swap_tokens(task["url"], task["steps"])
+    sleep_time = random.randint(1800, 7200)  # Random delay (30 min - 2 hours)
+    print(f"Next swap in {sleep_time // 60} minutes...")
+    time.sleep(sleep_time)
+
+driver.quit()
+
